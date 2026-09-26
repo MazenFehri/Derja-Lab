@@ -1,5 +1,4 @@
-torch==2.11.0
-pandas==3.0.3
+# what the server needs to run the site
 numpy==2.4.4
 scikit-learn==1.9.0
 fastapi==0.136.1

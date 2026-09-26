@@ -3,3 +3,4 @@ __pycache__/
 .vscode/
 features/*/learning/
 assets/
+models/*.pt

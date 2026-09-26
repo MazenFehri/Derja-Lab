@@ -24,13 +24,14 @@ A small web platform for practicing NLP on **Tunisian Arabic (Derja)**. Each fea
 ## Run it
 
 ```bash
-pip install -r requirements.txt
-python -m features.translit.train    # saves models/translit.pt
-python -m features.sentiment.train   # saves models/sentiment_<model>.pkl
-python app.py                         # site at http://127.0.0.1:7860
+pip install -r requirements-train.txt   # training needs PyTorch + pandas
+python -m features.translit.train       # saves models/translit.pt
+python -m features.translit.export      # converts it to models/translit.npz for the site
+python -m features.sentiment.train      # saves models/sentiment_<model>.pkl
+python app.py                            # site at http://127.0.0.1:7860
 ```
 
-Run every command from this folder (`Platform/`).
+Run every command from this folder (`Platform/`). The site itself only needs `requirements.txt` (NumPy, scikit-learn, FastAPI): no PyTorch.
 
 ## Project structure
 
@@ -39,7 +40,7 @@ Platform/
 ├── app.py                  # FastAPI server: pages + /api/translate, /api/sentiment
 ├── web/                    # frontend: index, translate, sentiment pages + style.css
 ├── data/                   # preprocessed_data.jsonl (src, tgt, label)
-├── models/                 # trained checkpoints (.pt, .pkl)
+├── models/                 # translit.pt (training), translit.npz (site), sentiment_*.pkl
 └── features/
     ├── sentiment/
     │   ├── preprocess.py   # tokenize(text)
@@ -49,8 +50,9 @@ Platform/
     └── translit/
         ├── vocab.py        # character vocab, encode / decode
         ├── model.py        # Encoder, Decoder (attention), Seq2Seq
-        ├── train.py        # training loop, saves the best checkpoint
-        └── predict.py      # loads the checkpoint, translate(text) -> str
+        ├── train.py        # training loop, saves models/translit.pt (PyTorch)
+        ├── export.py       # .pt -> .npz, and checks NumPy output == PyTorch output
+        └── predict.py      # NumPy-only inference, translate(text) -> str
 ```
 
 Every feature lives in its own folder under `features/` and exposes one function (`translate`, `predict`). `app.py` only calls that function.
@@ -102,7 +104,7 @@ That's why the output layer is `Linear(2 * hidden, vocab)`.
 - **Teacher forcing (0.5):** during training, half the time the decoder is fed the *correct* previous character instead of its own guess. This makes early training faster and more stable.
 - **Loss:** cross-entropy over characters, ignoring `<pad>`.
 - **Gradient clipping (1.0):** stops LSTM gradients from exploding.
-- **Validation:** 10% held out, evaluated with teacher forcing **off** so it matches real use. Only the epoch with the best validation loss is saved.
+- **Validation:** 10% held out, evaluated with teacher forcing **off** so it matches real use. The loss is printed every epoch; the model is saved after the last epoch.
 
 | Setting | Value |
 |---|---|
@@ -112,10 +114,21 @@ That's why the output layer is `Linear(2 * hidden, vocab)`.
 | Dropout | 0.3 |
 | Optimizer | Adam, lr 1e-3 |
 | Batch size | 64 |
-| Epochs | 20 |
+| Epochs | 60 |
 
 ### Inference
 **Greedy decoding:** start from `<sos>`, pick the most likely character at each step, and stop at `<eos>` or after 200 characters. It's simple and fast, but it can repeat itself (`3lihelih`). Beam search is the usual fix.
+
+### Serving without PyTorch
+PyTorch alone takes ~500 MB of RAM, more than free hosting allows (512 MB). But inference is just matrix math, so `predict.py` redoes the forward pass in NumPy:
+
+```
+gates = W_ih · x + b_ih + W_hh · h + b_hh        # 4 gates stacked: input, forget, cell, output
+c'    = σ(f) * c + σ(i) * tanh(g)
+h'    = σ(o) * tanh(c')
+```
+
+That runs through each of the 3 layers, for every character. Then attention and the output layer are a dot product, a softmax and a matrix multiply. `export.py` saves the trained weights to `translit.npz` and checks that NumPy gives exactly the same translations as PyTorch. The server drops from ~680 MB to ~200 MB of RAM.
 
 ---
 

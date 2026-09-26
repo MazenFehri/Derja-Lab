@@ -1,0 +1,4 @@
+# extra packages to train models on your machine (not installed on the server)
+-r requirements.txt
+torch==2.11.0
+pandas==3.0.3
