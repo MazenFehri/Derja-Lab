@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Derja Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Reem+Kufi:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="wrap top">
+    <a class="wordmark" href="/">Derja Lab <span lang="ar">دارجة</span></a>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <p class="pair" id="pair" aria-label="Tunisian words in Arabizi and Arabic script">
+        <span class="lat">3aslema</span><span class="bridge" aria-hidden="true">⟷</span><span class="ar" lang="ar" dir="rtl">عسلامة</span>
+      </p>
+      <p class="lede">Tunisian Arabic, written both ways people write it. NLP models built from scratch, one course week at a time.</p>
+    </section>
+
+    <section class="features" aria-label="Features">
+      <a class="feature" href="/translate">
+        <div class="sample" aria-hidden="true"><span lang="ar">حاجة</span><span class="digit">7</span>aja</div>
+        <div>
+          <h2>Arabic to Arabizi</h2>
+          <p>Type Derja in Arabic script and get it back the way people text it.</p>
+        </div>
+        <span class="status">Open</span>
+      </a>
+
+      <a class="feature" href="/sentiment">
+        <div class="sample" aria-hidden="true"><span lang="ar">يعطيك الصحة</span>positive</div>
+        <div>
+          <h2>Sentiment analysis</h2>
+          <p>Find out whether a comment is positive or negative, and compare how different models judge it.</p>
+        </div>
+        <span class="status">Open</span>
+      </a>
+    </section>
+  </main>
+
+  <script>
+    const PAIRS = [
+      ["3aslema", "عسلامة"], ["barcha", "برشا"], ["7aja", "حاجة"],
+      ["9albi", "قلبي"], ["5obza", "خبزة"], ["ya3tik sa7a", "يعطيك صحة"],
+    ];
+    const pair = document.getElementById("pair");
+    const lat = pair.querySelector(".lat");
+    const ar = pair.querySelector(".ar");
+
+    function paint(word) {
+      lat.replaceChildren(...[...word].map(ch => {
+        if (!/[0-9]/.test(ch)) return document.createTextNode(ch);
+        const s = document.createElement("span");
+        s.className = "digit";
+        s.textContent = ch;
+        return s;
+      }));
+    }
+    paint(PAIRS[0][0]);
+
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      let i = 0;
+      setInterval(() => {
+        pair.classList.add("fading");
+        setTimeout(() => {
+          i = (i + 1) % PAIRS.length;
+          paint(PAIRS[i][0]);
+          ar.textContent = PAIRS[i][1];
+          pair.classList.remove("fading");
+        }, 350);
+      }, 2800);
+    }
+  </script>
+</body>
+</html>

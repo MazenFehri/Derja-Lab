@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arabic to Arabizi · Derja Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Reem+Kufi:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="wrap top">
+    <a class="wordmark" href="/">Derja Lab <span lang="ar">دارجة</span></a>
+  </header>
+
+  <main class="wrap">
+    <div class="tool-head">
+      <h1>Arabic to Arabizi</h1>
+      <p>A character-level seq2seq model with attention, trained on about 17,000 Tunisian comments. Digits that stand in for Arabic letters are highlighted.</p>
+    </div>
+
+    <div class="panes">
+      <div class="pane">
+        <label class="pane-head" for="src">Arabic</label>
+        <textarea id="src" lang="ar" dir="rtl" maxlength="200" placeholder="اكتب هنا" autofocus></textarea>
+        <div class="pane-foot">
+          <span id="count">0 / 200</span>
+          <button class="btn" id="go">Convert</button>
+        </div>
+      </div>
+      <div class="pane">
+        <div class="pane-head">
+          <span>Arabizi</span>
+          <button class="ghost" id="copy" hidden>Copy</button>
+        </div>
+        <div class="out empty" id="out" aria-live="polite">Your Arabizi appears here</div>
+      </div>
+    </div>
+
+    <div class="try">
+      <span>Try</span>
+      <button class="chip" lang="ar">وي انا تعجبني برشا</button>
+      <button class="chip" lang="ar">تبارك الله عليه</button>
+      <button class="chip" lang="ar">شنوة احوالك اليوم</button>
+      <button class="chip" lang="ar">ماو قتلك مانيش جاي</button>
+    </div>
+  </main>
+
+  <script>
+    const src = document.getElementById("src");
+    const out = document.getElementById("out");
+    const go = document.getElementById("go");
+    const copy = document.getElementById("copy");
+    const count = document.getElementById("count");
+    let result = "";
+
+    function show(text) {
+      out.className = "out";
+      out.replaceChildren(...[...text].map(ch => {
+        if (!/[0-9]/.test(ch)) return document.createTextNode(ch);
+        const s = document.createElement("span");
+        s.className = "digit";
+        s.textContent = ch;
+        return s;
+      }));
+    }
+
+    async function convert() {
+      const text = src.value.trim();
+      if (!text) { src.focus(); return; }
+      go.disabled = true;
+      go.textContent = "Converting…";
+      try {
+        const res = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) throw new Error(res.status);
+        result = (await res.json()).result;
+        show(result);
+        copy.hidden = !result;
+      } catch {
+        out.className = "out error";
+        out.textContent = "The model didn't answer. Check that the server is running, then convert again.";
+        copy.hidden = true;
+      } finally {
+        go.disabled = false;
+        go.textContent = "Convert";
+      }
+    }
+
+    go.addEventListener("click", convert);
+    src.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); convert(); }
+    });
+    src.addEventListener("input", () => { count.textContent = `${src.value.length} / 200`; });
+
+    document.querySelectorAll(".chip").forEach(chip => chip.addEventListener("click", () => {
+      src.value = chip.textContent;
+      count.textContent = `${src.value.length} / 200`;
+      convert();
+    }));
+
+    copy.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(result);
+      copy.textContent = "Copied";
+      setTimeout(() => { copy.textContent = "Copy"; }, 1500);
+    });
+  </script>
+</body>
+</html>

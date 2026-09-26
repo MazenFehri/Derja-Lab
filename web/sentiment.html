@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sentiment analysis · Derja Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Reem+Kufi:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="wrap top">
+    <a class="wordmark" href="/">Derja Lab <span lang="ar">دارجة</span></a>
+  </header>
+
+  <main class="wrap">
+    <div class="tool-head">
+      <h1>Sentiment analysis</h1>
+      <p>Paste a Tunisian comment in Arabic script and see whether it reads as positive or negative. Pick a model to compare how different techniques judge the same text.</p>
+    </div>
+
+    <fieldset class="models" id="models">
+      <legend>Model</legend>
+    </fieldset>
+
+    <div class="panes">
+      <div class="pane">
+        <label class="pane-head" for="src">Comment</label>
+        <textarea id="src" lang="ar" dir="rtl" maxlength="500" placeholder="اكتب تعليق" autofocus></textarea>
+        <div class="pane-foot">
+          <span id="count">0 / 500</span>
+          <button class="btn" id="go">Analyze</button>
+        </div>
+      </div>
+      <div class="pane">
+        <div class="pane-head"><span>Result</span></div>
+        <div id="result" class="verdict empty" aria-live="polite">The verdict appears here</div>
+      </div>
+    </div>
+
+    <div class="try">
+      <span>Try</span>
+      <button class="chip" lang="ar">يعطيك الصحة شرفت تونس</button>
+      <button class="chip" lang="ar">برافو عليك</button>
+      <button class="chip" lang="ar">تفو عليكم</button>
+      <button class="chip" lang="ar">ماسط</button>
+    </div>
+  </main>
+
+  <script>
+    const src = document.getElementById("src");
+    const go = document.getElementById("go");
+    const count = document.getElementById("count");
+    const result = document.getElementById("result");
+    const picker = document.getElementById("models");
+
+    function selectedModel() {
+      return picker.querySelector("input:checked")?.value;
+    }
+
+    async function loadModels() {
+      try {
+        const models = await (await fetch("/api/sentiment/models")).json();
+        if (!models.length) {
+          picker.insertAdjacentHTML("beforeend", '<p class="models-empty">No models are trained yet. Run <code>python -m features.sentiment.train</code>.</p>');
+          go.disabled = true;
+          return;
+        }
+        models.forEach((m, i) => {
+          const label = document.createElement("label");
+          label.className = "model";
+          const input = Object.assign(document.createElement("input"), { type: "radio", name: "model", value: m.id, checked: i === 0 });
+          const name = Object.assign(document.createElement("span"), { className: "model-name", textContent: m.name });
+          const acc = Object.assign(document.createElement("span"), { className: "model-acc", textContent: `${(m.accuracy * 100).toFixed(1)}% on test set` });
+          label.append(input, name, acc);
+          picker.append(label);
+        });
+      } catch {
+        picker.insertAdjacentHTML("beforeend", '<p class="models-empty">Couldn\'t load the models. Check that the server is running, then reload.</p>');
+      }
+    }
+
+    function show(r) {
+      const pct = Math.round(r.confidence * 100);
+      result.className = `verdict ${r.label}`;
+      result.innerHTML = "";
+      const word = Object.assign(document.createElement("div"), { className: "verdict-label", textContent: r.label === "positive" ? "Positive" : "Negative" });
+      const bar = document.createElement("div");
+      bar.className = "meter";
+      bar.innerHTML = `<span style="width:${pct}%"></span>`;
+      const conf = Object.assign(document.createElement("div"), { className: "verdict-conf", textContent: `${pct}% confident` });
+      result.append(word, bar, conf);
+      if (r.known_words === 0) {
+        result.append(Object.assign(document.createElement("p"), { className: "verdict-note", textContent: "None of these words appear in the training data, so this is a guess." }));
+      } else if (r.known_words < r.total_words) {
+        result.append(Object.assign(document.createElement("p"), { className: "verdict-note", textContent: `${r.known_words} of ${r.total_words} words were seen in training.` }));
+      }
+    }
+
+    async function analyze() {
+      const text = src.value.trim();
+      const model = selectedModel();
+      if (!text) { src.focus(); return; }
+      if (!model) return;
+      go.disabled = true;
+      go.textContent = "Analyzing…";
+      try {
+        const res = await fetch("/api/sentiment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, model }),
+        });
+        if (!res.ok) throw new Error(res.status);
+        show(await res.json());
+      } catch {
+        result.className = "verdict error";
+        result.textContent = "The model didn't answer. Check that the server is running, then analyze again.";
+      } finally {
+        go.disabled = false;
+        go.textContent = "Analyze";
+      }
+    }
+
+    go.addEventListener("click", analyze);
+    picker.addEventListener("change", () => { if (src.value.trim()) analyze(); });
+    src.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); analyze(); }
+    });
+    src.addEventListener("input", () => { count.textContent = `${src.value.length} / 500`; });
+    document.querySelectorAll(".chip").forEach(chip => chip.addEventListener("click", () => {
+      src.value = chip.textContent;
+      count.textContent = `${src.value.length} / 500`;
+      analyze();
+    }));
+
+    loadModels();
+  </script>
+</body>
+</html>
