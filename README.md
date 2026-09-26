@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://derja-lab.onrender.com/"><img src="https://img.shields.io/badge/Live%20demo-derja--lab.onrender.com-D29A12?style=flat-square" alt="Live demo"></a>
   <img src="https://img.shields.io/badge/Python-3.13-1D4FA0?style=flat-square&logo=python&logoColor=white" alt="Python 3.13">
   <img src="https://img.shields.io/badge/PyTorch-2.11-0F1F3D?style=flat-square&logo=pytorch&logoColor=white" alt="PyTorch 2.11">
   <img src="https://img.shields.io/badge/FastAPI-0.136-1D4FA0?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI">
@@ -13,6 +14,8 @@
 # Derja Lab
 
 A small web platform for practicing NLP on **Tunisian Arabic (Derja)**. Each feature is a model built from scratch while following an NLP course, then wired into the site.
+
+**Try it live: [derja-lab.onrender.com](https://derja-lab.onrender.com/)** (free hosting sleeps when idle, so the first visit can take about a minute to wake up).
 
 ## Features
 
