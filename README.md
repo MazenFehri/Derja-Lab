@@ -1,3 +1,14 @@
+---
+title: Derja Lab
+emoji: 🇹🇳
+colorFrom: blue
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Tunisian Arabic NLP models, built from scratch
+---
+
 <p align="center">
   <img src="assets/banner.png" alt="Derja Lab: Tunisian Arabic NLP. Arabic script تبارك الله عليه becomes Arabizi tbarkallah 3lih." width="100%">
 </p>
@@ -117,11 +128,6 @@ That's why the output layer is `Linear(2 * hidden, vocab)`.
 ### Inference
 **Greedy decoding:** start from `<sos>`, pick the most likely character at each step, and stop at `<eos>` or after 200 characters. It's simple and fast, but it can repeat itself (`3lihelih`). Beam search is the usual fix.
 
-### Data
-About 17,000 Tunisian comments in `data/preprocessed_data.jsonl`, each with Arabic script (`src`), Arabizi (`tgt`) and a sentiment `label` (`pos` / `neg`). The sentiment feature uses the same file.
-
-Data source: [TSAC](https://github.com/fbougares/TSAC), with Arabic-script versions added to go with the Arabizi.
-
 ---
 
 ## Notes: Sentiment analysis
@@ -157,3 +163,9 @@ x = [ sum of positive counts of its words , sum of negative counts of its words 
 ### Bug fixed while porting the notebook
 The notebook counted words with `corpus.count(w)`, which counts **substrings**: `من` was also counted inside every longer word containing it. Counting whole tokens with `Counter` fixed it and took accuracy from 72.8% to 83.9%.
 
+---
+
+## Data
+About 17,000 Tunisian comments in `data/preprocessed_data.jsonl`, each with Arabic script (`src`), Arabizi (`tgt`) and a sentiment `label` (`pos` / `neg`). The sentiment feature uses the same file.
+
+Data source: [TSAC](https://github.com/fbougares/TSAC), with Arabic-script versions added to go with the Arabizi.
