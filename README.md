@@ -1,14 +1,3 @@
----
-title: Derja Lab
-emoji: 🇹🇳
-colorFrom: blue
-colorTo: gray
-sdk: docker
-app_port: 7860
-pinned: false
-short_description: Tunisian Arabic NLP models, built from scratch
----
-
 <p align="center">
   <img src="assets/banner.png" alt="Derja Lab: Tunisian Arabic NLP. Arabic script تبارك الله عليه becomes Arabizi tbarkallah 3lih." width="100%">
 </p>

@@ -90,19 +90,10 @@ def run_epoch(loader, train):
     return total / len(loader)
 
 if __name__ == "__main__":
-    PATIENCE = 5  # stop after this many epochs without a new best val loss
-    MIN_EPOCHS = int(0.7 * EPOCHS)  # early stopping only allowed after 70% of the epochs
-    best, bad_epochs = float("inf"), 0
+    os.makedirs("models", exist_ok=True)
     for epoch in range(1, EPOCHS + 1):
         tr, va = run_epoch(train_loader, True), run_epoch(val_loader, False)
         print(f"epoch {epoch:2d} | train {tr:.3f} | val {va:.3f}")
-        if va < best:
-            best, bad_epochs = va, 0
-            torch.save({"model": model.state_dict(), "src_vocab": src_vocab,
-                        "tgt_vocab": tgt_vocab, "config": CONFIG}, "models/translit.pt")
-            print("  saved")
-        else:
-            bad_epochs += 1
-            if bad_epochs >= PATIENCE and epoch >= MIN_EPOCHS:
-                print(f"val loss hasn't improved for {PATIENCE} epochs, stopping. Best val {best:.3f} is saved.")
-                break
+    torch.save({"model": model.state_dict(), "src_vocab": src_vocab,
+                "tgt_vocab": tgt_vocab, "config": CONFIG}, "models/translit.pt")
+    print("saved models/translit.pt")
