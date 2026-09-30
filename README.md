@@ -91,7 +91,8 @@ Word-level tokens would treat `barcha`, `baarcha` and `barch2` as three unrelate
 The vocab is built once in `train.py` and saved **inside the checkpoint**. If it were rebuilt at startup, any change in the data would shift the character IDs and the model would output garbage.
 
 ### Seq2seq (encoder / decoder)
-- **Encoder:** an LSTM reads the Arabic characters and produces one hidden vector per character, plus a final state that summarizes the sentence.
+- **Encoder:** a **bidirectional** LSTM reads the Arabic characters left to right *and* right to left, so each character's vector knows what comes before and after it (that decides vowels: `ب` → `ba`, `bi` or `bou`). Batches are packed, so the backward direction starts at each sentence's last real character, not at the padding.
+- **Bridge:** two small linear layers squeeze the forward and backward final states (2 × hidden) into the decoder's starting state (hidden). The encoder outputs are projected to hidden size once per sentence, for attention.
 - **Decoder:** another LSTM starts from that final state and generates Arabizi one character at a time, feeding each prediction back in as the next input.
 
 ### Attention
@@ -112,9 +113,9 @@ That's why the output layer is `Linear(2 * hidden, vocab)`.
 | Setting | Value |
 |---|---|
 | Embedding size | 128 |
-| Hidden size | 256 |
-| LSTM layers | 3 |
-| Dropout | 0.3 |
+| Hidden size | 512 |
+| LSTM layers | 1 (encoder is bidirectional) |
+| Dropout | 0.1 |
 | Optimizer | Adam, lr 1e-3 |
 | Batch size | 64 |
 | Epochs | 60 |
@@ -131,7 +132,7 @@ c'    = σ(f) * c + σ(i) * tanh(g)
 h'    = σ(o) * tanh(c')
 ```
 
-That runs through each of the 3 layers, for every character. Then attention and the output layer are a dot product, a softmax and a matrix multiply. `export.py` saves the trained weights to `translit.npz` and checks that NumPy gives exactly the same translations as PyTorch. The server drops from ~680 MB to ~200 MB of RAM.
+That runs for every character, in both directions for the encoder. Then attention and the output layer are a dot product, a softmax and a matrix multiply. `export.py` saves the trained weights to `translit.npz` and checks that NumPy gives exactly the same translations as PyTorch. The server drops from ~680 MB to ~200 MB of RAM.
 
 ---
 

@@ -56,7 +56,7 @@ def collate(batch):
 random.seed(42); torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-CONFIG = dict(emb=128, hidden=256, layers=3, dropout=0.3)
+CONFIG = dict(emb=128, hidden=512, layers=1, dropout=0.1)
 EPOCHS, LR, BATCH_SIZE =   60, 1e-3, 64
 
 train_df = data.sample(frac=0.9, random_state=42)
