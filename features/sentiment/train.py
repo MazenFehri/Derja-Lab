@@ -4,10 +4,12 @@ import pickle
 import pandas as pd
 
 from features.sentiment.logreg import LogRegSentiment
+from features.sentiment.naive_bayes import NaiveBayesSentiment
 
 # add a model: write a class with fit / predict_proba / score / vocab / name, then register it here
 MODELS = {
     "logreg": LogRegSentiment,
+    "nb": NaiveBayesSentiment,
 }
 
 data = pd.read_json("data/preprocessed_data.jsonl", lines=True)

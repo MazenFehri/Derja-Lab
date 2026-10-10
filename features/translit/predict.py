@@ -8,6 +8,7 @@ import re
 
 import numpy as np
 
+from features.normalize import normalize_arabic
 from features.translit.vocab import encode, decode, SOS, EOS
 
 W = dict(np.load("models/translit.npz"))
@@ -62,7 +63,7 @@ def encode_sentence(ids):
 
 
 def translate(text, max_len=200):
-    text = text.strip()
+    text = normalize_arabic(text)  # same cleaning the training data got
     if not text:
         return ""
 

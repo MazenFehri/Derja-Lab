@@ -45,6 +45,7 @@ Platform/
 ├── data/                   # preprocessed_data.jsonl (src, tgt, label)
 ├── models/                 # translit.pt (training), translit.npz (site), sentiment_*.pkl
 └── features/
+    ├── normalize.py        # normalize_arabic / normalize_arabizi: same cleaning as the training data
     ├── sentiment/
     │   ├── preprocess.py   # tokenize(text)
     │   ├── logreg.py       # LogRegSentiment
@@ -59,6 +60,8 @@ Platform/
 ```
 
 Every feature lives in its own folder under `features/` and exposes one function (`translate`, `predict`). `app.py` only calls that function.
+
+Whatever the user types goes through `features/normalize.py` first. It holds the exact steps from `Preprocessing.ipynb` (NFKC, diacritics and tatweel removed, emojis dropped, `!?،` → `.`, repeated letters reduced), so the models see input cleaned the same way as their training data.
 
 ---
 

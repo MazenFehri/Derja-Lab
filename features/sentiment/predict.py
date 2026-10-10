@@ -1,6 +1,7 @@
 import pickle
 from pathlib import Path
 
+from features.normalize import normalize_arabic
 from features.sentiment.preprocess import tokenize
 
 # every trained model in models/ shows up on the site automatically
@@ -16,6 +17,7 @@ def available():
 
 def predict(text, model_id):
     model = MODELS[model_id]["model"]
+    text = normalize_arabic(text)  # same cleaning the training data got
     words = tokenize(text)
     p = model.predict_proba(text)
     return {
