@@ -21,15 +21,17 @@ A small web platform for practicing NLP on **Tunisian Arabic (Derja)**. Each fea
 
 | Feature | Status | What it does |
 |---|---|---|
-| Arabic → Arabizi | Live | Type Derja in Arabic script, get it back in Arabizi (`برشا` → `barcha`) |
+| Arabic ⇄ Arabizi | Live | Switch Derja between Arabic script and Arabizi, both ways (`برشا` ⇄ `barcha`). One model per direction |
 | Sentiment analysis | Live | Tell whether a comment is positive or negative, and pick which model judges it |
 
 ## Run it
 
 ```bash
 pip install -r requirements-train.txt   # training needs PyTorch + pandas
-python -m features.translit.train       # saves models/translit.pt
-python -m features.translit.export      # converts it to models/translit.npz for the site
+python -m features.translit.train ar2az        # Arabic → Arabizi, saves models/translit_ar2az.pt
+python -m features.translit.export ar2az       # converts it to models/translit_ar2az.npz for the site
+python -m features.translit.train az2ar        # Arabizi → Arabic: same code, src and tgt swapped
+python -m features.translit.export az2ar
 python -m features.sentiment.train      # saves models/sentiment_<model>.pkl
 python app.py                            # site at http://127.0.0.1:7860
 ```
@@ -43,7 +45,7 @@ Platform/
 ├── app.py                  # FastAPI server: pages + /api/translate, /api/sentiment
 ├── web/                    # frontend: index, translate, sentiment pages + style.css
 ├── data/                   # preprocessed_data.jsonl (src, tgt, label)
-├── models/                 # translit.pt (training), translit.npz (site), sentiment_*.pkl
+├── models/                 # translit_<dir>.pt (training), translit_<dir>.npz (site), sentiment_*.pkl
 └── features/
     ├── normalize.py        # normalize_arabic / normalize_arabizi: same cleaning as the training data
     ├── sentiment/
@@ -54,7 +56,7 @@ Platform/
     └── translit/
         ├── vocab.py        # character vocab, encode / decode
         ├── model.py        # Encoder, Decoder (attention), Seq2Seq
-        ├── train.py        # training loop, saves models/translit.pt (PyTorch)
+        ├── train.py        # training loop for one direction (ar2az / az2ar), saves models/translit_<dir>.pt
         ├── export.py       # .pt -> .npz, and checks NumPy output == PyTorch output
         └── predict.py      # NumPy-only inference, translate(text) -> str
 ```
@@ -65,7 +67,7 @@ Whatever the user types goes through `features/normalize.py` first. It holds the
 
 ---
 
-## Notes: Arabic → Arabizi
+## Notes: Arabic ⇄ Arabizi
 
 ### Arabizi
 Derja written with Latin letters, where digits stand in for Arabic sounds that Latin has no letter for:
@@ -79,6 +81,11 @@ Derja written with Latin letters, where digits stand in for Arabic sounds that L
 | 2 | ء | imra2a (امرأة) |
 
 There is no standard spelling: `barcha`, `barsha`, `brcha` are all common.
+
+### Two directions, one model code
+Arabizi → Arabic is the same seq2seq, trained with `src` and `tgt` swapped (`train.py az2ar`). Each direction has its own weights and vocab (`translit_ar2az`, `translit_az2ar`), and the input is cleaned with the matching function (`normalize_arabic` or `normalize_arabizi`). The site only offers a direction once its `.npz` exists in `models/`, so a model still training just shows the swap button as disabled.
+
+This direction is harder: one Arabizi spelling can map to several Arabic words, and the digits, `ch`/`sh` and missing vowels all have to be decoded back into exact Arabic letters.
 
 ### Why character level
 Word-level tokens would treat `barcha`, `baarcha` and `barch2` as three unrelated words. Transliteration is really a mapping between characters, so the model reads and writes one character at a time. The vocab is small (about 64 Arabic and 52 Arabizi characters), and there is no out-of-vocabulary word problem.
@@ -135,7 +142,7 @@ c'    = σ(f) * c + σ(i) * tanh(g)
 h'    = σ(o) * tanh(c')
 ```
 
-That runs for every character, in both directions for the encoder. Then attention and the output layer are a dot product, a softmax and a matrix multiply. `export.py` saves the trained weights to `translit.npz` and checks that NumPy gives exactly the same translations as PyTorch. The server drops from ~680 MB to ~200 MB of RAM.
+That runs for every character, in both directions for the encoder. Then attention and the output layer are a dot product, a softmax and a matrix multiply. `export.py` saves the trained weights to `translit_<dir>.npz` and checks that NumPy gives exactly the same translations as PyTorch. The server drops from ~680 MB to ~200 MB of RAM.
 
 ---
 

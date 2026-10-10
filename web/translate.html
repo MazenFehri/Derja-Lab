@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Arabic to Arabizi · Derja Lab</title>
+  <title>Arabic ⇄ Arabizi · Derja Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Reem+Kufi:wght@500;600&display=swap" rel="stylesheet">
@@ -17,13 +17,20 @@
 
   <main class="wrap">
     <div class="tool-head">
-      <h1>Arabic to Arabizi</h1>
-      <p>A character-level seq2seq model with attention, trained on about 17,000 Tunisian comments. Digits that stand in for Arabic letters are highlighted.</p>
+      <h1 id="title">Arabic to Arabizi</h1>
+      <p>A character-level seq2seq model with attention, trained on about 17,000 Tunisian comments, one model per direction. Digits that stand in for Arabic letters are highlighted.</p>
+    </div>
+
+    <div class="swapbar">
+      <span id="from-name">Arabic</span>
+      <button class="ghost swap" id="swap" aria-label="Swap direction" title="Swap direction">⇄</button>
+      <span id="to-name">Arabizi</span>
+      <span class="swap-note" id="swap-note" hidden>Arabizi to Arabic is still training</span>
     </div>
 
     <div class="panes">
       <div class="pane">
-        <label class="pane-head" for="src">Arabic</label>
+        <label class="pane-head" for="src" id="src-label">Arabic</label>
         <textarea id="src" lang="ar" dir="rtl" maxlength="200" placeholder="اكتب هنا" autofocus></textarea>
         <div class="pane-foot">
           <span id="count">0 / 200</span>
@@ -32,32 +39,40 @@
       </div>
       <div class="pane">
         <div class="pane-head">
-          <span>Arabizi</span>
+          <span id="out-label">Arabizi</span>
           <button class="ghost" id="copy" hidden>Copy</button>
         </div>
         <div class="out empty" id="out" aria-live="polite">Your Arabizi appears here</div>
       </div>
     </div>
 
-    <div class="try">
-      <span>Try</span>
-      <button class="chip" lang="ar">وي انا تعجبني برشا</button>
-      <button class="chip" lang="ar">تبارك الله عليه</button>
-      <button class="chip" lang="ar">شنوة احوالك اليوم</button>
-      <button class="chip" lang="ar">ماو قتلك مانيش جاي</button>
-    </div>
+    <div class="try" id="try"></div>
   </main>
 
   <script>
-    const src = document.getElementById("src");
-    const out = document.getElementById("out");
-    const go = document.getElementById("go");
-    const copy = document.getElementById("copy");
-    const count = document.getElementById("count");
+    const DIRS = {
+      ar2az: {
+        title: "Arabic to Arabizi", from: "Arabic", to: "Arabizi",
+        srcLang: "ar", srcDir: "rtl", outLang: "en", outDir: "ltr", placeholder: "اكتب هنا",
+        examples: ["وي انا تعجبني برشا", "تبارك الله عليه", "شنوة احوالك اليوم", "ماو قتلك مانيش جاي"],
+      },
+      az2ar: {
+        title: "Arabizi to Arabic", from: "Arabizi", to: "Arabic",
+        srcLang: "en", srcDir: "ltr", outLang: "ar", outDir: "rtl", placeholder: "Ekteb houni",
+        examples: ["ya3tik sa7a", "barcha", "chnowa a7welek", "tbarkallah 3lih"],
+      },
+    };
+
+    const $ = id => document.getElementById(id);
+    const src = $("src"), out = $("out"), go = $("go"), copy = $("copy"), count = $("count"), swap = $("swap");
+    let direction = "ar2az";
     let result = "";
+
+    function updateCount() { count.textContent = `${src.value.length} / 200`; }
 
     function show(text) {
       out.className = "out";
+      if (direction === "az2ar") { out.textContent = text; return; }  // Arabic output: nothing to highlight
       out.replaceChildren(...[...text].map(ch => {
         if (!/[0-9]/.test(ch)) return document.createTextNode(ch);
         const s = document.createElement("span");
@@ -65,6 +80,26 @@
         s.textContent = ch;
         return s;
       }));
+    }
+
+    function setDirection(d) {
+      direction = d;
+      const D = DIRS[d];
+      $("title").textContent = D.title;
+      document.title = `${D.title} · Derja Lab`;
+      $("from-name").textContent = $("src-label").textContent = D.from;
+      $("to-name").textContent = $("out-label").textContent = D.to;
+      Object.assign(src, { lang: D.srcLang, dir: D.srcDir, placeholder: D.placeholder });
+      Object.assign(out, { lang: D.outLang, dir: D.outDir });
+      if (!result) out.textContent = `Your ${D.to} appears here`;
+      $("try").replaceChildren(
+        Object.assign(document.createElement("span"), { textContent: "Try" }),
+        ...D.examples.map(ex => {
+          const b = Object.assign(document.createElement("button"), { className: "chip", textContent: ex, lang: D.srcLang });
+          b.addEventListener("click", () => { src.value = ex; updateCount(); convert(); });
+          return b;
+        }),
+      );
     }
 
     async function convert() {
@@ -76,7 +111,7 @@
         const res = await fetch("/api/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, direction }),
         });
         if (!res.ok) throw new Error(res.status);
         result = (await res.json()).result;
@@ -92,23 +127,34 @@
       }
     }
 
+    swap.addEventListener("click", () => {
+      const previous = result;                 // like a dictionary: the output becomes the new input
+      result = "";
+      copy.hidden = true;
+      out.className = "out empty";
+      setDirection(direction === "ar2az" ? "az2ar" : "ar2az");
+      if (previous) { src.value = previous; updateCount(); convert(); }
+      src.focus();
+    });
+
     go.addEventListener("click", convert);
     src.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); convert(); }
     });
-    src.addEventListener("input", () => { count.textContent = `${src.value.length} / 200`; });
-
-    document.querySelectorAll(".chip").forEach(chip => chip.addEventListener("click", () => {
-      src.value = chip.textContent;
-      count.textContent = `${src.value.length} / 200`;
-      convert();
-    }));
+    src.addEventListener("input", updateCount);
 
     copy.addEventListener("click", async () => {
       await navigator.clipboard.writeText(result);
       copy.textContent = "Copied";
       setTimeout(() => { copy.textContent = "Copy"; }, 1500);
     });
+
+    setDirection("ar2az");
+
+    // only offer the swap once the reverse model is trained and exported
+    fetch("/api/translate/directions").then(r => r.json()).then(dirs => {
+      if (!dirs.includes("az2ar")) { swap.disabled = true; $("swap-note").hidden = false; }
+    }).catch(() => {});
   </script>
 </body>
 </html>

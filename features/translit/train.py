@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 
 import pandas as pd
 import torch
@@ -12,8 +13,14 @@ from features.translit.vocab import build_vocab, encode
 
 
 
+# which way to train: python -m features.translit.train ar2az  (default)  or  az2ar
+DIRECTION = sys.argv[1] if len(sys.argv) > 1 else "ar2az"
+assert DIRECTION in ("ar2az", "az2ar"), "direction must be ar2az or az2ar"
+
 data = pd.read_json("data/preprocessed_data.jsonl", lines=True)
 data=data[['src','tgt']]
+if DIRECTION == "az2ar":
+    data = data.rename(columns={"src": "tgt", "tgt": "src"})  # same model, input and output swapped
 
 data["src"] = data["src"].str.strip()
 data["tgt"] = data["tgt"].str.strip()
@@ -39,8 +46,8 @@ class TranslitDataset(Dataset):
         return len(self.src)
 
     def __getitem__(self, i):
-        src_ids = encode(self.src[i], src_stoi,  add_sos_eos=False)   # Arabic, no specials
-        tgt_ids = encode(self.tgt[i], tgt_stoi, add_sos_eos=True)    # Arabizi, with <sos>/<eos>
+        src_ids = encode(self.src[i], src_stoi,  add_sos_eos=False)   # input, no specials
+        tgt_ids = encode(self.tgt[i], tgt_stoi, add_sos_eos=True)    # output, with <sos>/<eos>
         return torch.tensor(src_ids), torch.tensor(tgt_ids)
 
 def collate(batch):
@@ -91,9 +98,10 @@ def run_epoch(loader, train):
 
 if __name__ == "__main__":
     os.makedirs("models", exist_ok=True)
+    print(f"training {DIRECTION}")
     for epoch in range(1, EPOCHS + 1):
         tr, va = run_epoch(train_loader, True), run_epoch(val_loader, False)
         print(f"epoch {epoch:2d} | train {tr:.3f} | val {va:.3f}")
     torch.save({"model": model.state_dict(), "src_vocab": src_vocab,
-                "tgt_vocab": tgt_vocab, "config": CONFIG}, "models/translit.pt")
-    print("saved models/translit.pt")
+                "tgt_vocab": tgt_vocab, "config": CONFIG}, f"models/translit_{DIRECTION}.pt")
+    print(f"saved models/translit_{DIRECTION}.pt")

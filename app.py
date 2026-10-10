@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -6,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from features.sentiment import predict as sentiment
-from features.translit.predict import translate
+from features.translit.predict import TRANSLATORS, translate
 
 WEB = Path(__file__).parent / "web"
 
@@ -16,6 +17,7 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 class TranslateRequest(BaseModel):
     text: str = Field(max_length=200)  # same cap as the training data
+    direction: Literal["ar2az", "az2ar"] = "ar2az"
 
 
 class SentimentRequest(BaseModel):
@@ -38,9 +40,16 @@ def sentiment_page():
     return FileResponse(WEB / "sentiment.html")
 
 
+@app.get("/api/translate/directions")
+def api_translate_directions():
+    return list(TRANSLATORS)
+
+
 @app.post("/api/translate")
 def api_translate(req: TranslateRequest):
-    return {"result": translate(req.text)}
+    if req.direction not in TRANSLATORS:
+        raise HTTPException(404, f"No trained model for '{req.direction}' yet")
+    return {"result": translate(req.text, req.direction)}
 
 
 @app.get("/api/sentiment/models")
